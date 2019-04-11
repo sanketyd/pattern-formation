@@ -1,5 +1,7 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import os
+from tqdm import tqdm
 
 
 def grid_gen(grid_size=256, u_per=0.5, v_per=0.25, per_size=20):
@@ -32,14 +34,16 @@ def double_derivative_2d(grid, h):
     return double_der_x+double_der_y
 
 
-def finite_diff(grid_u, grid_v, h, timesteps, dt, f, k, D_u, D_v):
+def finite_diff(grid_u, grid_v, h, timesteps, dt, f, k, D_u, D_v, frame_rate=100):
     fig, ax = plt.subplots()
     ax.axes.get_yaxis().set_visible(False)
     ax.axes.get_xaxis().set_visible(False)
     im = ax.imshow(grid_u, interpolation='nearest')
     fig.colorbar(im)
 
-    for _ in range(timesteps):
+    counter = 1
+
+    for t in tqdm(range(timesteps)):
         u_xy = double_derivative_2d(grid_u, h)
         v_xy = double_derivative_2d(grid_v, h)
 
@@ -48,10 +52,24 @@ def finite_diff(grid_u, grid_v, h, timesteps, dt, f, k, D_u, D_v):
         grid_u += dt*du_dt
         grid_v += dt*dv_dt
 
+        if t%frame_rate == 0:
+            im.set_data(grid_u)
+            fig.savefig('temp/_temp%06d.png'%counter)
+            counter += 1
+
     im.set_data(grid_u)
     fig.savefig('res_{}_{}.png'.format(f, k))
 
 
+def make_animation(f, k):
+    movie_name = 'mov_{}_{}.mpg'.format(f, k)
+    os.system('rm {}'.format(movie_name))
+    os.system('ffmpeg -r 25 -i temp/_temp%06d.png -b:v 1800 {}'.format(movie_name))
+    os.system('rm temp/*')
+
+
 if __name__ == "__main__":
     grid_u, grid_v = grid_gen()
-    finite_diff(grid_u, grid_v, 0.01, 50000, 1, 0.03, 0.062, 0.00002, 0.00001)
+    f, k = 0.025, 0.05
+    finite_diff(grid_u, grid_v, 0.01, 200000, 0.05, f, k, 0.00002, 0.00001)
+    make_animation(f, k)
