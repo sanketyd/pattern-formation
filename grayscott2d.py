@@ -68,7 +68,7 @@ def double_derivative_2d(grid, h):
     return double_der_x+double_der_y
 
 
-def finite_diff(grid_u, grid_v, h, timesteps, dt, f, k, D_u, D_v, frame_rate=100):
+def finite_diff(grid_u, grid_v, h, timesteps, dt, f, k, D_u, D_v, method='euler', frame_rate=100):
     fig, ax = plt.subplots()
     # ax.axes.get_yaxis().set_visible(False)
     # ax.axes.get_xaxis().set_visible(False)
@@ -81,10 +81,27 @@ def finite_diff(grid_u, grid_v, h, timesteps, dt, f, k, D_u, D_v, frame_rate=100
         u_xy = double_derivative_2d(grid_u, h)
         v_xy = double_derivative_2d(grid_v, h)
 
-        du_dt = -grid_u*grid_v**2 + f*(1 - grid_u) + D_u*u_xy
-        dv_dt = grid_u*grid_v**2 - (f+k)*grid_v + D_v*v_xy
-        grid_u += dt*du_dt
-        grid_v += dt*dv_dt
+        du_dt = lambda gu: -grid_u*grid_v**2 + f*(1 - gu) + D_u*u_xy
+        dv_dt = lambda gv: grid_u*grid_v**2 - (f+k)*gv + D_v*v_xy
+        if method == 'euler':
+            grid_u += dt*du_dt(grid_u)
+            grid_v += dt*dv_dt(grid_v)
+        elif method == 'rk2':
+            k1 = dt*0.5*du_dt(grid_u)
+            grid_u += dt*du_dt(grid_u+k1)
+            k1 = dt*0.5*dv_dt(grid_v)
+            grid_v += dt*dv_dt(grid_v+k1)
+        elif method == 'rk4':
+            k1 = dt*du_dt(grid_u)
+            k2 = dt*du_dt(grid_u + 0.5*k1)
+            k3 = dt*du_dt(grid_u + 0.5*k2)
+            k4 = dt*du_dt(grid_u + k3)
+            grid_u += (k1 + 2*k2 + 2*k3 + k4)/6.0
+            k1 = dt*dv_dt(grid_v)
+            k2 = dt*dv_dt(grid_v + 0.5*k1)
+            k3 = dt*dv_dt(grid_v + 0.5*k2)
+            k4 = dt*dv_dt(grid_v + k3)
+            grid_v += (k1 + 2*k2 + 2*k3 + k4)/6.0
 
         if t%frame_rate == 0:
             im.set_data(grid_u)
@@ -105,9 +122,12 @@ def make_animation(f, k):
 
 
 if __name__ == "__main__":
-    kwargs = {'u_per_new': [0.2, 0.6], 'v_per_new': 0.6}
-    grid_u, grid_v = grid_gen(u_per=0.6, v_per=0.6, per_size=10, num_per=6, per_type='overlap', **kwargs)
-    # grid_u, grid_v = grid_gen()
-    f, k = 0.062, 0.065
-    finite_diff(grid_u, grid_v, 0.01, 100000, 0.5, f, k, 0.00002, 0.00001)
-    make_animation(f, k)
+    inp = [(0.062, 0.065, 'overlap'), (0.04, 0.06, 'default'), (0.035, 0.065, 'default'), (0.012, 0.05, 'default'), (0.025, 0.05, 'default')]
+    for params in inp:
+        if params[2] == 'overlap':
+            kwargs = {'u_per_new': [0.2, 0.6], 'v_per_new': 0.6}
+            grid_u, grid_v = grid_gen(u_per=0.6, v_per=0.6, per_size=10, num_per=15, per_type='overlap', **kwargs)
+        else:
+            grid_u, grid_v = grid_gen()
+        finite_diff(grid_u, grid_v, 0.01, 100000, 0.5, params[0], params[1], 0.00002, 0.00001, 'rk4')
+        make_animation(params[0], params[1])
