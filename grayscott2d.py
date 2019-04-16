@@ -1,3 +1,9 @@
+########################################################################################################################
+# Implementation of finite difference method to solve 2D gray scott model of reaction diffusion
+# Filename: grayscott2d.py
+# Author: Sanket(150634), Dheeraj Athrey(150231)
+# Instructor: Prof. Mahendra K. Verma
+########################################################################################################################
 import matplotlib.pyplot as plt
 import numpy as np
 import os
